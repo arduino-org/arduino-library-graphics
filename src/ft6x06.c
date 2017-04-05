@@ -11,7 +11,7 @@
 #define I2C_SCL_SDA_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOB_CLK_ENABLE()
 #define I2C_FORCE_RESET()                __HAL_RCC_I2C1_FORCE_RESET()
 #define I2C_RELEASE_RESET()              __HAL_RCC_I2C1_RELEASE_RESET()
-#define I2C_SCL_SDA_GPIO_PORT            HAL_GPIOB
+#define I2C_SCL_SDA_GPIO_PORT            GPIOB
 #define I2C_SCL_PIN                      GPIO_PIN_8
 #define I2C_SCL_SDA_AF                   GPIO_AF4_I2C1
 #define I2C_SDA_PIN                      GPIO_PIN_9
@@ -19,13 +19,13 @@
 #define I2C_ER_IRQn                      I2C1_ER_IRQn
 #else // BOARD_DISCO469
 #define I2C_SCL_FREQ_KHZ                 400000
-#define I2C_INSTANCE                      HAL_I2C3
+#define I2C_INSTANCE                     I2C3
 #define I2C_CLK_ENABLE()                 __HAL_RCC_I2C3_CLK_ENABLE()
 #define DMAx_CLK_ENABLE()                 __HAL_RCC_DMA1_CLK_ENABLE()
 #define I2C_SCL_SDA_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOH_CLK_ENABLE()
 #define I2C_FORCE_RESET()                __HAL_RCC_I2C3_FORCE_RESET()
 #define I2C_RELEASE_RESET()              __HAL_RCC_I2C3_RELEASE_RESET()
-#define I2C_SCL_SDA_GPIO_PORT            HAL_GPIOH
+#define I2C_SCL_SDA_GPIO_PORT            GPIOH
 #define I2C_SCL_PIN                      GPIO_PIN_7
 #define I2C_SDA_PIN                      GPIO_PIN_8
 #define I2C_SCL_SDA_AF                   GPIO_AF4_I2C3
@@ -592,4 +592,3 @@ static uint8_t ft6x06_GetInstance(uint16_t DeviceAddr)
 
     return 0xFF;
 }
-

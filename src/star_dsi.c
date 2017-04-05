@@ -1,26 +1,35 @@
 #include "star_dsi.h"
 #include "stm32f469xx.h"
 
-// TODO
-//#define ENABLE_IRQ
-
+#define ENABLE_LTDC_IRQ
+// Not used yet
+//#define ENABLE_DMA2D_IRQ
+//#define ENABLE_DSI_IRQ
 
 // alfran: DMA2D_Color_Mode DMA2D Color Mode
 
 #define DMA2D_ARGB8888                       ((uint32_t)0x00000000)             /*!< ARGB8888 DMA2D color mode */
-#define DMA2D_RGB888                         ((uint32_t)0x00000001)             /*!< RGB888 DMA2D color mode   */
-#define DMA2D_RGB565                         ((uint32_t)0x00000002)             /*!< RGB565 DMA2D color mode   */
-#define DMA2D_ARGB1555                       ((uint32_t)0x00000003)             /*!< ARGB1555 DMA2D color mode */
-#define DMA2D_ARGB4444                       ((uint32_t)0x00000004)             /*!< ARGB4444 DMA2D color mode */
+//#define DMA2D_RGB888                         ((uint32_t)0x00000001)             /*!< RGB888 DMA2D color mode   */
+//#define DMA2D_RGB565                         ((uint32_t)0x00000002)             /*!< RGB565 DMA2D color mode   */
+//#define DMA2D_ARGB1555                       ((uint32_t)0x00000003)             /*!< ARGB1555 DMA2D color mode */
+//#define DMA2D_ARGB4444                       ((uint32_t)0x00000004)             /*!< ARGB4444 DMA2D color mode */
 
-
+// Valid only for 800x480 32bpp
+#define SCR_SIZE                        ((uint32_t)0x00180000) // slightly larger than 800*480*4
+#define MAX_SCR_COUNT                   2
 #define BG_LAYER_ADDR                   ((uint32_t)0xC0000000)
-//#define NUM_LAYERS                      ((uint32_t)2)
 #define BG_LAYER_IDX                    ((uint32_t)0)
-#define FG_LAYER_IDX                    ((uint32_t)1)
+//#define FG_LAYER_IDX                    ((uint32_t)1)
+//#define NUM_LAYERS                      ((uint32_t)2)
 #define LCD_OTM8009A_ID                 ((uint32_t)0)
-#define FB_ADDR(_x, _y) \
-    (hltdc.LayerCfg[currLayer].FBStartAdress + 4*(panelWidth*(_y)+(_x)))
+#define FB_ADDR(_currScrIdx,_x, _y) \
+    (hltdc.LayerCfg[currLayer].FBStartAdress \
+     + _currScrIdx*SCR_SIZE \
+     + 4*(panelWidth*(_y)+(_x)))
+#define MIN(_a, _b)          ( (_a) > (_b) ? (_b) : (_a) )
+#define DMA2D_MAX_SIZE   128U
+#define DMA2D_MAX_AREA   (DMA2D_MAX_SIZE*DMA2D_MAX_SIZE)
+#define IS_VBLANK()      (LTDC->CDSR & LTDC_CDSR_VSYNCS)
 
 // #ifdef BOARD_DISCO469
 //     #define RES_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOH_CLK_ENABLE()
@@ -28,11 +37,13 @@
 //     #define GPIO_RES_PIN                GPIO_PIN_7
 // #else
     #define RES_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOK_CLK_ENABLE()
-    #define GPIO_RES_PORT               HAL_GPIOK
+    #define GPIO_RES_PORT               GPIOK
     #define GPIO_RES_PIN                GPIO_PIN_7
 //#endif
 
-static uint32_t  currLayer = BG_LAYER_IDX;
+static uint32_t currLayer = BG_LAYER_IDX;
+static uint32_t currScrIdx = 0;
+static volatile uint8_t swapScrBuf = 0;
 static DSI_VidCfgTypeDef hdsivid;
 static DMA2D_HandleTypeDef hdma2d;
 static LTDC_HandleTypeDef hltdc;
@@ -73,40 +84,69 @@ static void LowLevelInit(void)
     __HAL_RCC_DSI_FORCE_RESET();
     __HAL_RCC_DSI_RELEASE_RESET();
 
-#ifdef ENABLE_IRQ
-    //* @brief NVIC configuration for LTDC interrupt that is now enabled
+#ifdef ENABLE_LTDC_IRQ
+    // NVIC configuration for LTDC
     HAL_NVIC_SetPriority(LTDC_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(LTDC_IRQn);
+#endif
 
-    //* @brief NVIC configuration for DMA2D interrupt that is now enabled
+#ifdef ENABLE_DMA2D_IRQ
+    // NVIC configuration for DMA2D
     HAL_NVIC_SetPriority(DMA2D_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(DMA2D_IRQn);
+#endif
 
-    //* @brief NVIC configuration for DSI interrupt that is now enabled
+#ifdef ENABLE_DSI_IRQ
+    // NVIC configuration for DSI
     HAL_NVIC_SetPriority(DSI_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(DSI_IRQn);
 #endif
 }
 
-#ifdef ENABLE_IRQ
-void STAR_DSI_DMA2D_IRQHandler(void)
+#ifdef ENABLE_LTDC_IRQ
+void __irq_LTDC_IRQHandler(void)
+{
+    HAL_LTDC_IRQHandler(&hltdc);
+}
+
+void __irq_LTDC_ER_IRQHandler(void)
+{
+    HAL_LTDC_IRQHandler(&hltdc);
+}
+
+void HAL_LTDC_LineEventCallback(LTDC_HandleTypeDef *hltdc)
+{
+    static uint32_t cnt = 0;
+
+    if (swapScrBuf) {
+        uint32_t addr = hltdc->LayerCfg[currLayer].FBStartAdress;
+        addr += currScrIdx * SCR_SIZE;
+        LTDC_LAYER(hltdc, currLayer)->CFBAR = addr;
+        __HAL_LTDC_RELOAD_CONFIG(hltdc);
+        swapScrBuf = 0;
+    }
+
+    HAL_LTDC_ProgramLineEvent(hltdc, 0);
+}
+
+void HAL_LTDC_ErrorCallback(LTDC_HandleTypeDef *hltdc)
+{
+    // Re-enable FIFO underrun error IRQ
+    __HAL_LTDC_ENABLE_IT(hltdc, LTDC_IT_FU);
+}
+#endif
+
+#ifdef ENABLE_DMA2D_IRQ
+void __irq_DMA2D_IRQHandler(void)
 {
     HAL_DMA2D_IRQHandler(&hdma2d);
 }
+#endif
 
-void STAR_DSI_DSI_IRQHandler(void)
+#ifdef ENABLE_DSI_IRQ
+void __irq_DSI_IRQHandler(void)
 {
-    HAL_DSI_IRQHandler(&(hdsi));
-}
-
-void STAR_DSI_LTDC_IRQHandler(void)
-{
-    HAL_LTDC_IRQHandler(&(hltdc));
-}
-
-void STAR_DSI_LTDC_ER_IRQHandler(void)
-{
-    HAL_LTDC_IRQHandler(&(hltdc));
+    HAL_DSI_IRQHandler(&hdsi);
 }
 #endif
 
@@ -152,7 +192,7 @@ uint8_t STAR_DSI_Init(LCD_OrientationTypeDef orientation)
     LcdResetOnce();
     LowLevelInit();
 
-    hdsi.Instance = HAL_DSI;
+    hdsi.Instance = DSI;
     HAL_DSI_DeInit(&(hdsi));
 
     dsiPllInit.PLLNDIV  = 125;
@@ -255,7 +295,7 @@ uint8_t STAR_DSI_Init(LCD_OrientationTypeDef orientation)
     hltdc.Init.Backcolor.Green = 255;
     hltdc.Init.Backcolor.Red = 255;
     hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
-    hltdc.Instance = HAL_LTDC;
+    hltdc.Instance = LTDC;
 
     // Get LTDC Configuration from DSI Configuration
     HAL_LTDC_StructInitFromVideoConfig(&(hltdc), &(hdsivid));
@@ -266,6 +306,10 @@ uint8_t STAR_DSI_Init(LCD_OrientationTypeDef orientation)
 
     // Layer init
     LayerInit(BG_LAYER_IDX, BG_LAYER_ADDR);
+
+#ifdef ENABLE_LTDC_IRQ
+    HAL_LTDC_ProgramLineEvent(&hltdc, 0);
+#endif
 
     return LCD_OK;
 }
@@ -280,19 +324,50 @@ uint16_t STAR_DSI_PanelHeight(void)
     return panelHeight;
 }
 
-void STAR_DSI_DrawPoint(uint16_t x, uint16_t y, uint32_t color)
+void STAR_DSI_SetDrawScreen(uint8_t scrIdx)
 {
-    *(__IO uint32_t*)(hltdc.LayerCfg[currLayer].FBStartAdress +
-            4*(y*panelWidth + x)) = color;
+    if (scrIdx < MAX_SCR_COUNT)
+        currScrIdx = scrIdx;
 }
 
-void STAR_DSI_FillBufferDma(uint32_t layerIdx, void *dst, uint32_t width,
+uint8_t STAR_DSI_GetDrawScreen(void)
+{
+    return currScrIdx;
+}
+
+void STAR_DSI_ShowScreen(uint8_t scrIdx)
+{
+    // Flip screen at next VSYNC
+    swapScrBuf = 1;
+    while (swapScrBuf) ;
+}
+
+void STAR_DSI_CopyScreen(uint8_t fromIdx, uint8_t toIdx)
+{
+    uint32_t offset = 0;
+
+    while (offset < SCR_SIZE) {
+        while (!IS_VBLANK()) ;
+        memcpy(FB_ADDR(toIdx, 0, 0)+offset, FB_ADDR(fromIdx, 0, 0)+offset, DMA2D_MAX_AREA);
+        offset += DMA2D_MAX_AREA;
+    }
+}
+
+void STAR_DSI_DrawPoint(uint16_t x, uint16_t y, uint32_t color)
+{
+    *(__IO uint32_t*)FB_ADDR(currScrIdx, x, y) = color;
+}
+
+static void STAR_DSI_FillBufferDma(uint32_t layerIdx, void *dst, uint32_t width,
         uint32_t height, uint32_t lineOffset, uint32_t color)
 {
+    // Wait for VBLANK start
+    while (!IS_VBLANK()) ;
+
     hdma2d.Init.Mode = DMA2D_R2M;
     hdma2d.Init.ColorMode = DMA2D_ARGB8888;
     hdma2d.Init.OutputOffset = lineOffset;
-    hdma2d.Instance = HAL_DMA2D;
+    hdma2d.Instance = DMA2D;
 
     if (HAL_DMA2D_Init(&hdma2d) == HAL_OK)
         if (HAL_DMA2D_ConfigLayer(&hdma2d, layerIdx) == HAL_OK)
@@ -304,8 +379,32 @@ void STAR_DSI_FillBufferDma(uint32_t layerIdx, void *dst, uint32_t width,
 void STAR_DSI_FillRectDma(uint16_t x, uint16_t y, uint16_t width,
         uint16_t height, uint32_t color)
 {
-    STAR_DSI_FillBufferDma(currLayer, FB_ADDR(x, y), width, height,
-            panelWidth - width, color);
+    uint16_t tx = x, ty = y;
+    uint16_t tw, th;
+    uint16_t rw = width, rh = height;   // Width/height to go
+
+    // If blitting area takes more than one VSYNC period,
+    // we split it in several calls
+    if (width*height > DMA2D_MAX_AREA) {
+        while (rh) {
+            th = MIN(DMA2D_MAX_SIZE, rh);
+            while (rw) {
+                tw = MIN(DMA2D_MAX_SIZE, rw);
+                STAR_DSI_FillBufferDma(currLayer, FB_ADDR(currScrIdx, tx, ty), tw, th,
+                        panelWidth - tw, color);
+                tx += DMA2D_MAX_SIZE;
+                rw -= tw;
+            }
+            ty += DMA2D_MAX_SIZE;
+            rh -= th;
+            tx = x;
+            rw = width;
+        }
+    }
+    else {
+        STAR_DSI_FillBufferDma(currLayer, FB_ADDR(currScrIdx, x, y), width, height,
+                panelWidth - width, color);
+    }
 }
 
 void STAR_DSI_DisplayOn(void)
