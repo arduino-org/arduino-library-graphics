@@ -8,7 +8,7 @@
 
 // #ifdef BOARD_DISCO469
 // #define TS_INT_PIN                      ((uint32_t)GPIO_PIN_5)
-// #define TS_INT_GPIO_PORT                ((GPIO_TypeDef*)HAL_GPIOJ)
+// #define TS_INT_GPIO_PORT                ((GPIO_TypeDef*)GPIOJ)
 // #define TS_INT_GPIO_CLK_ENABLE()        __HAL_RCC_GPIOJ_CLK_ENABLE()
 // #define TS_INT_GPIO_CLK_DISABLE()       __HAL_RCC_GPIOJ_CLK_DISABLE()
 // #define TS_INT_EXTI_IRQn                EXTI9_5_IRQn

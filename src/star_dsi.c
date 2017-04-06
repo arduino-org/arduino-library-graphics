@@ -33,7 +33,7 @@
 
 // #ifdef BOARD_DISCO469
 //     #define RES_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOH_CLK_ENABLE()
-//     #define GPIO_RES_PORT               HAL_GPIOH
+//     #define GPIO_RES_PORT               GPIOH
 //     #define GPIO_RES_PIN                GPIO_PIN_7
 // #else
     #define RES_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOK_CLK_ENABLE()
@@ -43,6 +43,7 @@
 
 static uint32_t currLayer = BG_LAYER_IDX;
 static uint32_t currScrIdx = 0;
+static uint32_t showScrIdx = 0;
 static volatile uint8_t swapScrBuf = 0;
 static DSI_VidCfgTypeDef hdsivid;
 static DMA2D_HandleTypeDef hdma2d;
@@ -120,7 +121,7 @@ void HAL_LTDC_LineEventCallback(LTDC_HandleTypeDef *hltdc)
 
     if (swapScrBuf) {
         uint32_t addr = hltdc->LayerCfg[currLayer].FBStartAdress;
-        addr += currScrIdx * SCR_SIZE;
+        addr += showScrIdx * SCR_SIZE;
         LTDC_LAYER(hltdc, currLayer)->CFBAR = addr;
         __HAL_LTDC_RELOAD_CONFIG(hltdc);
         swapScrBuf = 0;
@@ -337,9 +338,12 @@ uint8_t STAR_DSI_GetDrawScreen(void)
 
 void STAR_DSI_ShowScreen(uint8_t scrIdx)
 {
-    // Flip screen at next VSYNC
-    swapScrBuf = 1;
-    while (swapScrBuf) ;
+    // Change visbile screen at next VSYNC
+    if (scrIdx < MAX_SCR_COUNT) {
+        showScrIdx = scrIdx;
+        swapScrBuf = 1;
+        while (swapScrBuf) ;
+    }
 }
 
 void STAR_DSI_CopyScreen(uint8_t fromIdx, uint8_t toIdx)

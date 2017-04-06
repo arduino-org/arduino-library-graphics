@@ -20,3 +20,4 @@ extern uint8_t STAR_SDRAM_Test(void);
 #endif
 
 #endif // _STAR_SDRAM_H
+
