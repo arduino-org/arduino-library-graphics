@@ -71,6 +71,26 @@ bool AGFX::begin()
     return true;
 }
 
+void AGFX::setDrawScreen(uint8_t scrIdx)
+{
+    STAR_DSI_SetDrawScreen(scrIdx);
+}
+
+uint8_t AGFX::getDrawScreen(void)
+{
+    return STAR_DSI_GetDrawScreen();
+}
+
+void AGFX::showScreen(uint8_t scrIdx)
+{
+    STAR_DSI_ShowScreen(scrIdx);
+}
+
+void AGFX::copyScreen(uint8_t fromScrIdx, uint8_t toScrIdx)
+{
+    STAR_DSI_CopyScreen(fromScrIdx, toScrIdx);
+}
+
 // Processing stype API ------------------- BEGIN --------------------
 uint32_t AGFX::color(uint8_t r, uint8_t g, uint8_t b, uint8_t alpha)
 {

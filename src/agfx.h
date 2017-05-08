@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "agfx_ll.h"
 #include "agfx_colors.h"
+//#include "star_ts.h"
 
 #define ENABLE_DEMOS
 
@@ -12,6 +13,10 @@ class AGFX
 public:
     AGFX();
     bool begin();
+    void setDrawScreen(uint8_t scrIdx);
+    uint8_t getDrawScreen(void);
+    void showScreen(uint8_t scrIdx);
+    void copyScreen(uint8_t fromScrIdx, uint8_t toScrIdx);
     uint32_t color(uint8_t r, uint8_t g, uint8_t b, uint8_t alpha);
     uint32_t color(uint8_t r, uint8_t g, uint8_t b);
     uint32_t color(uint8_t gray, uint8_t alpha);
@@ -55,4 +60,3 @@ private:
 };
 
 #endif // _AGFX_H_INCLUDED
-

@@ -116,44 +116,44 @@ static void LowLevelInit(SDRAM_HandleTypeDef *hsdram)
 
         /* GPIOC configuration : PC0 is SDNWE */
         gpio_init_structure.Pin   = GPIO_PIN_0;
-        HAL_GPIO_Init(HAL_GPIOC, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOC, &gpio_init_structure);
 
         /* GPIOD configuration */
         gpio_init_structure.Pin   = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_8| GPIO_PIN_9 | GPIO_PIN_10 |\
                                     GPIO_PIN_14 | GPIO_PIN_15;
-        HAL_GPIO_Init(HAL_GPIOD, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOD, &gpio_init_structure);
 
         /* GPIOE configuration */
         gpio_init_structure.Pin   = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_7| GPIO_PIN_8 | GPIO_PIN_9 |\
                                     GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 |\
                                     GPIO_PIN_15;
-        HAL_GPIO_Init(HAL_GPIOE, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOE, &gpio_init_structure);
 
         /* GPIOF configuration */
         gpio_init_structure.Pin   = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2| GPIO_PIN_3 | GPIO_PIN_4 |\
                                     GPIO_PIN_5 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 |\
                                     GPIO_PIN_15;
-        HAL_GPIO_Init(HAL_GPIOF, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOF, &gpio_init_structure);
 
         /* GPIOG configuration */
         gpio_init_structure.Pin   = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_4| GPIO_PIN_5 | GPIO_PIN_8 |\
                                     GPIO_PIN_15;
-        HAL_GPIO_Init(HAL_GPIOG, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOG, &gpio_init_structure);
 
         /* GPIOH configuration */
         gpio_init_structure.Pin   = GPIO_PIN_2 | GPIO_PIN_3;
-        HAL_GPIO_Init(HAL_GPIOH, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOH, &gpio_init_structure);
 
 #ifdef SDRAM_32BIT_ACCESS
         /* GPIOH configuration */
         gpio_init_structure.Pin   = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 |\
                                     GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-        HAL_GPIO_Init(HAL_GPIOH, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOH, &gpio_init_structure);
 
         /* GPIOI configuration */
         gpio_init_structure.Pin   = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |\
                                     GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_9 | GPIO_PIN_10;
-        HAL_GPIO_Init(HAL_GPIOI, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOI, &gpio_init_structure);
 #else
 #ifdef BOARD_DISCO469
         // Force unused pins status in 16bit acces mode
@@ -161,13 +161,13 @@ static void LowLevelInit(SDRAM_HandleTypeDef *hsdram)
         gpio_init_structure.Pull = GPIO_PULLUP;
         gpio_init_structure.Pin  = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 |\
                                     GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_9 | GPIO_PIN_10;
-        HAL_GPIO_Init(HAL_GPIOI, &gpio_init_structure);
+        HAL_GPIO_Init(GPIOI, &gpio_init_structure);
         gpio_init_structure.Pin   = GPIO_PIN_4 | GPIO_PIN_5;
         gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
         gpio_init_structure.Pull      = GPIO_PULLDOWN;
-        HAL_GPIO_Init(HAL_GPIOI, &gpio_init_structure);
-        HAL_GPIO_WritePin(HAL_GPIOI, GPIO_PIN_4, 0);
-        HAL_GPIO_WritePin(HAL_GPIOI, GPIO_PIN_5, 0);
+        HAL_GPIO_Init(GPIOI, &gpio_init_structure);
+        HAL_GPIO_WritePin(GPIOI, GPIO_PIN_4, 0);
+        HAL_GPIO_WritePin(GPIOI, GPIO_PIN_5, 0);
 #endif // BOARD_DISCO469
 #endif // SDRAM_32BIT_ACCESS
 
@@ -271,4 +271,3 @@ uint8_t STAR_SDRAM_Test(void)
 
     return res;
 }
-
